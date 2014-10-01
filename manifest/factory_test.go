@@ -17,11 +17,11 @@ func TestRead(t *testing.T) {
 		notes = "the notes"
 
 		program blue {
-			command = "blue command"
+			cmd = ["blue-command", "b1", "b2"]
 		}
 
 		program red {
-			command = "red command"
+			cmd = ["red-command", "r1", "r2"]
 		}
 
 		service acme {
@@ -63,10 +63,10 @@ func TestRead(t *testing.T) {
 				So(len(m.Program), ShouldEqual, 2)
 
 				So(m.Program["red"], ShouldNotBeNil)
-				So(m.Program["red"].Command, ShouldEqual, "red command")
+				So(m.Program["red"].Cmd, ShouldResemble, []string{"red-command", "r1", "r2"})
 
 				So(m.Program["blue"], ShouldNotBeNil)
-				So(m.Program["blue"].Command, ShouldEqual, "blue command")
+				So(m.Program["blue"].Cmd, ShouldResemble, []string{"blue-command", "b1", "b2"})
 			})
 
 			Convey("And I expect the service to be assigned", func() {

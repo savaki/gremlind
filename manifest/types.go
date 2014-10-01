@@ -1,7 +1,7 @@
 package manifest
 
 type Program struct {
-	Command string
+	Cmd []string
 }
 
 type Service struct {
