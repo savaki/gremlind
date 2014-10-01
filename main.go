@@ -26,15 +26,6 @@ func main() {
 	app.Run(os.Args)
 }
 
-type ChanWriter struct {
-	messages chan []byte
-}
-
-func (c *ChanWriter) Write(p []byte) (n int, err error) {
-	c.messages <- p
-	return len(p), nil
-}
-
 func Run(c *cli.Context) {
 	filename := c.String(FieldManifest)
 	m, err := manifest.ReadFile(filename)
@@ -42,10 +33,10 @@ func Run(c *cli.Context) {
 		log.Fatalln(err)
 	}
 
+	// 1. setup all the loggers
 	publishers := map[string]broadcast.Publisher{}
-	for id, program := range m.Program {
-		messages := make(chan []byte, 4096)
-		publisher := broadcast.New((<-chan []byte)(messages))
+	for id, _ := range m.Program {
+		publisher := broadcast.New()
 		publisher.Start()
 		publishers[id] = publisher
 
@@ -58,14 +49,16 @@ func Run(c *cli.Context) {
 				os.Stdout.Write(data)
 			}
 		}()
+	}
 
-		writer := &ChanWriter{messages: messages}
-		e := executor.New(id, program, writer, writer)
+	// 2. run configuration scripts
+
+	// 3. start the application
+	for id, program := range m.Program {
+		publisher := publishers[id]
+		e := executor.New(id, program, publisher, publisher)
 		e.Run()
 	}
 
-	// start or connect to the logger
-	// run configuration scripts
-	// start the application
-	// begin service checks
+	// 4. begin service checks
 }
