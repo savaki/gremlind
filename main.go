@@ -6,7 +6,9 @@ import (
 	"github.com/savaki/gremlind/executor"
 	"github.com/savaki/gremlind/manifest"
 	"log"
+	"net"
 	"os"
+	"strings"
 )
 
 const (
@@ -33,22 +35,28 @@ func Run(c *cli.Context) {
 		log.Fatalln(err)
 	}
 
+	firehose := broadcast.New()
+	firehose.Start()
+	firehose.SubscribeWriter(os.Stdout)
+	defer firehose.Close()
+
+	if logger := os.Getenv("LOGGER_PORT"); logger != "" && strings.HasPrefix(logger, "tcp://") {
+		address := logger[len("tcp://"):]
+		conn, err := net.Dial("tcp", address)
+		if err == nil {
+			firehose.SubscribeWriter(conn)
+		}
+	}
+
 	// 1. setup all the loggers
 	publishers := map[string]broadcast.Publisher{}
 	for id, _ := range m.Program {
 		publisher := broadcast.New()
 		publisher.Start()
-		publishers[id] = publisher
+		publisher.SubscribeWriter(firehose)
+		defer publisher.Close()
 
-		response := make(chan *broadcast.Subscription, 1)
-		publisher.Subscribe(response)
-		subscription := <-response
-		go func() {
-			for {
-				data := <-subscription.Receive
-				os.Stdout.Write(data)
-			}
-		}()
+		publishers[id] = publisher
 	}
 
 	// 2. run configuration scripts
